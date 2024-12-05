@@ -1,6 +1,6 @@
 model:
   model_id: "llm-jp/llm-jp-3-13b"
-  adapter_id: "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"  # Hugging FaceにアップロードされたLoRAアダプタID
+  adapter_id: "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"  # Hugging FaceにアップロードされたLoRAアダプタID # expire済みの仮コード
   load_in_4bit: true
   dtype: null  # 自動設定
 

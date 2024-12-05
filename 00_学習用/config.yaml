@@ -1,31 +1,68 @@
 model:
-  #id: "llm-jp/llm-jp-3-13b"
-  id: "google/gemma-2-9b-it"
+  base_model_id: "llm-jp/llm-jp-3-13b"
+  # id: "google/gemma-2-9b-it"
+  new_model_id: "llm-jp-3-13b-finetune"
   max_seq_length: 512
-  dtype: null
-  load_in_4bit: false
-  trust_remote_code: false
   lora:
-    r: 32
+    r: 16
     alpha: 32
     dropout: 0.05
-    bias: none
-    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    bias: "none"
 
-trainer:
-  batch_size: 2
-  gradient_accumulation_steps: 4
-  num_epochs: 1
-  logging_steps: 10
-  save_steps: 100
-  learning_rate: 0.0002
-  #2e-4
-  fp16: false
+quantization:
+  load_in_4bit: true
+  quant_type: "nf4"
+  compute_dtype: "bfloat16"
+
+training:
   output_dir: "outputs"
+  batch_size: 2
+  gradient_accumulation: 2
+  learning_rate: 5e-5
+  num_epochs: 1
+  warmup_steps: 10
+  save_steps: 100
+  logging_steps: 10
+  group_by_length: true
 
 dataset:
-  path: "./ichikara-instruction-003-001-1.json"
+  train_file: "./ichikara-instruction-003-001-1.json"
+  eval_file: "./elyza-tasks-100-TV_0.jsonl"
   prompt_format: "### 指示\n{}\n### 回答\n{}"
+
+huggingface:
+  hf_token: "your_hugging_face_token"
+  private: true
+
+
+#model:
+#  #id: "llm-jp/llm-jp-3-13b"
+#  id: "google/gemma-2-9b-it"
+#  max_seq_length: 512
+#  dtype: null
+#  load_in_4bit: false
+#  trust_remote_code: false
+#  lora:
+#    r: 32
+#    alpha: 32
+#    dropout: 0.05
+#    bias: none
+#    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+#
+#trainer:
+#  batch_size: 2
+#  gradient_accumulation_steps: 4
+#  num_epochs: 1
+#  logging_steps: 10
+#  save_steps: 100
+#  learning_rate: 0.0002
+#  #2e-4
+#  fp16: false
+#  output_dir: "outputs"
+#
+#dataset:
+#  path: "./ichikara-instruction-003-001-1.json"
+#  prompt_format: "### 指示\n{}\n### 回答\n{}"
 
 #memo: |-
 #    training_arguments: 学習の設定

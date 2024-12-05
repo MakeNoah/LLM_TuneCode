@@ -1,4 +1,3 @@
-from trl import SFTTrainer
 from transformers import TrainingArguments
 from unsloth import is_bfloat16_supported
 
@@ -16,24 +15,25 @@ def initialize_trainer(config, model, tokenizer, dataset):
         SFTTrainer: 初期化されたトレーナー。
     """
     training_args = TrainingArguments(
-        per_device_train_batch_size=config["batch_size"],
-        gradient_accumulation_steps=config["gradient_accumulation_steps"],
-        num_train_epochs=config["num_epochs"],
-        logging_steps=config["logging_steps"],
-        save_steps=config["save_steps"],
-        learning_rate=config["learning_rate"],
-        fp16=config["fp16"],
+        output_dir=config["training"]["output_dir"],
+        per_device_train_batch_size=config["training"]["batch_size"],
+        gradient_accumulation_steps=config["training"]["gradient_accumulation"],
+        learning_rate=config["training"]["learning_rate"],
+        num_train_epochs=config["training"]["num_epochs"],
+        warmup_steps=config["training"]["warmup_steps"],
+        save_steps=config["training"]["save_steps"],
+        logging_steps=config["training"]["logging_steps"],
+        fp16= not is_bfloat16_supported(),
         bf16=is_bfloat16_supported(),
-        output_dir=config["output_dir"],
-        report_to="none",
+        group_by_length=config["training"]["group_by_length"],
     )
 
-    return SFTTrainer(
+    trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
         train_dataset=dataset["train"],
-        max_seq_length=512,
+        max_seq_length=config["model"]["max_seq_length"],
         dataset_text_field="formatted_text",
-        packing=False,
         args=training_args,
     )
+    return trainer
