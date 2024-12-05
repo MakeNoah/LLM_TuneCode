@@ -1,0 +1,55 @@
+model:
+  #id: "llm-jp/llm-jp-3-13b"
+  id: "google/gemma-2-9b-it"
+  max_seq_length: 512
+  dtype: null
+  load_in_4bit: false
+  trust_remote_code: false
+  lora:
+    r: 32
+    alpha: 32
+    dropout: 0.05
+    bias: none
+    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+trainer:
+  batch_size: 2
+  gradient_accumulation_steps: 4
+  num_epochs: 1
+  logging_steps: 10
+  save_steps: 100
+  learning_rate: 0.0002
+  #2e-4
+  fp16: false
+  output_dir: "outputs"
+
+dataset:
+  path: "./ichikara-instruction-003-001-1.json"
+  prompt_format: "### 指示\n{}\n### 回答\n{}"
+
+#memo: |-
+#    training_arguments: 学習の設定
+#      - output_dir:トレーニング後のモデルを保存するディレクトリ
+#      - per_device_train_batch_size:
+#          - デバイスごとのトレーニングバッチサイズ
+#      - per_device_eval_batch_size:
+#          - デバイスごとの評価バッチサイズ
+#      - gradient_accumulation_steps:
+#          - 勾配を更新する前にステップを積み重ねる回数
+#      - optim:
+#          - オプティマイザの設定
+#      - num_train_epochs:
+#          - エポック数
+#      - eval_strategy:
+#          - 評価の戦略 ("no"/"steps"/"epoch")
+#      - eval_steps:eval_strategyが"steps"のとき、評価を行うstep間隔
+#      - logging_strategy:ログ記録の戦略
+#      - logging_steps:ログを出力するステップ間隔
+#      - warmup_steps:学習率のウォームアップステップ数
+#      - save_steps:モデルを保存するステップ間隔
+#      - save_total_limit:保存しておくcheckpointの数
+#      - max_steps:トレーニングの最大ステップ数
+#      - learning_rate:学習率
+#      - fp16:16bit浮動小数点の使用設定（第8回演習を参考にすると良いです）
+#      - bf16:BFloat16の使用設定
+#      - group_by_length:入力シーケンスの長さによりバッチをグループ化 (トレーニングの効率化)

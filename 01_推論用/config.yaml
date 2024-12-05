@@ -1,0 +1,17 @@
+model:
+  model_id: "llm-jp/llm-jp-3-13b"
+  adapter_id: "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"  # Hugging FaceにアップロードされたLoRAアダプタID
+  load_in_4bit: true
+  dtype: null  # 自動設定
+
+hf_token: ""  # Hugging Face Token を指定
+
+data:
+  input_file: "./elyza-tasks-100-TV_0.jsonl"
+  output_file_template: "/content/{adapter_id}_output.jsonl"
+
+generation:
+  max_new_tokens: 512
+  use_cache: true
+  do_sample: false
+  repetition_penalty: 1.2
