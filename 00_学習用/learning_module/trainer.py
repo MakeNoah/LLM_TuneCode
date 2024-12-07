@@ -1,5 +1,6 @@
 from transformers import TrainingArguments
 from unsloth import is_bfloat16_supported
+from trl import SFTTrainer
 
 def initialize_trainer(config, model, tokenizer, dataset):
     """

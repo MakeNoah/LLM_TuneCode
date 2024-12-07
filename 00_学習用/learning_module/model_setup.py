@@ -19,7 +19,7 @@ def initialize_model(config):
         device_map="auto"
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(config["model"]["base_model_id"], trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(config["model"]["base_model_id"], trust_remote_code=False)
 
     lora_config = LoraConfig(
         r=config["model"]["lora"]["r"],

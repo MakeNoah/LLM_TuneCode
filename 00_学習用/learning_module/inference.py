@@ -1,6 +1,6 @@
 from tqdm import tqdm
 import torch
-
+import json 
 def infer_and_save(model, tokenizer, eval_dataset, output_path):
     """
     評価データセットに対して推論を実行し、結果を保存する。
