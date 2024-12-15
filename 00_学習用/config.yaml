@@ -1,8 +1,14 @@
+#この行はコミットしないこと
+huggingface:
+  hf_token: "dummy"
+  private: false
+
 model:
-  base_model_id: "llm-jp/llm-jp-3-13b"
-  #base_model_id:  "google/gemma-2-9b"
+  #base_model_id: "llm-jp/llm-jp-3-13b"
+  base_model_id:  "google/gemma-2-9b"
   new_model_path: "./results"
-  new_model_id: "llm-jp-3-13b-finetune"
+  #new_model_id: "llm-jp-3-13b-finetune"
+  new_model_id: "gemma-2-9b-finetune"
   max_seq_length: 512
   lora:
     r: 16
@@ -11,14 +17,14 @@ model:
     bias: "none"
 
 quantization:
-  load_in_4bit: true
+  load_in_4bit: false
   quant_type: "nf4"
   compute_dtype: "bfloat16"
 
 training:
   output_dir: "./results/outputs"
   batch_size: 1
-  gradient_accumulation: 4
+  gradient_accumulation: 16
   learning_rate: 5.0e-5
   num_epochs: 1
   warmup_steps: 10
@@ -33,9 +39,7 @@ dataset:
   eval_file: "./dataset/elyza-tasks-100-TV_0.jsonl"
   prompt_format: "### 指示\n{}\n### 回答\n{}"
 
-huggingface:
-  hf_token: "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"
-  private: false
+
 
 process_config:
   input_filepaths:

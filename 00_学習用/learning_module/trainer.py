@@ -27,6 +27,7 @@ def initialize_trainer(config, model, tokenizer, dataset):
         fp16= not is_bfloat16_supported(),
         bf16=is_bfloat16_supported(),
         group_by_length=config["training"]["group_by_length"],
+        remove_unused_columns=False
     )
 
     trainer = SFTTrainer(

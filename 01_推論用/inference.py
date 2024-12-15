@@ -6,6 +6,10 @@ from tqdm import tqdm
 from unsloth import FastLanguageModel
 from peft import PeftModel
 import torch
+import os
+
+# 環境変数を設定
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 class Config:
     """設定情報を読み込むクラス"""
@@ -24,25 +28,70 @@ class Config:
 class ModelFactory:
     """モデルのロードを担当するファクトリークラス"""
     @staticmethod
+    def quantize_model(model, bit_width=14):
+        """モデルのパラメータを指定されたビット幅に量子化"""
+        scale_factor = 2 ** bit_width - 1
+        print(f"Quantizing model to {bit_width}-bit representation...")
+
+        for name, param in tqdm(model.named_parameters(), desc="Quantizing parameters"):
+            if param.requires_grad:  # 学習可能パラメータのみ量子化
+                # スケーリングとクリッピング
+                min_val, max_val = param.data.min(), param.data.max()
+                param.data = torch.round((param.data - min_val) / (max_val - min_val) * scale_factor)
+                # データ型を保持しつつ値をスケール
+                param.data = param.data * (max_val - min_val) / scale_factor + min_val
+
+        print(f"Model quantized to {bit_width}-bit successfully.")
+        return model
+
+    @staticmethod
     def create_model(config: Config):
         """設定に基づいてモデルを作成する"""
         model_id = config.get("model.model_id")
         adapter_id = config.get("model.adapter_id")
-        dtype = config.get("model.dtype")
-        load_in_4bit = config.get("model.load_in_4bit")
         hf_token = config.get("hf_token")
+        bit_width = config.get("model.bit_width", 14)  # デフォルトは14-bit
+        save_path = config.get("model.save_path", "./saved_model")
 
         # モデルのロード
+        print("Loading base model...")
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name=model_id,
-            dtype=dtype,
-            load_in_4bit=load_in_4bit,
-            trust_remote_code=True,
+            dtype=torch.float32,  # フル精度でロード
+            trust_remote_code=False,
+            device_map="auto",  # 自動でデバイスを割り当て
         )
+        print("Base model loaded.")
 
         # LoRAアダプタの統合
+        print("Loading LoRA adapter...")
         model = PeftModel.from_pretrained(model, adapter_id, token=hf_token)
+        print("LoRA adapter loaded.")
+
+        # アダプタを統合して元のモデルにマージ
+        print("Merging LoRA adapter into base model...")
+        model.merge_and_unload()
+        print("LoRA adapter merged successfully.")
+
+        # モデルを指定されたビット幅で量子化
+        model = ModelFactory.quantize_model(model, bit_width=bit_width)
+
+        # GPUに移動（量子化後のモデルはすべてGPUに乗る）
+        model = model.to("cuda")
+        print("Quantized model moved to GPU.")
+
+        # 統合されたモデルを保存
+        print("Saving the unified model...")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        model.save_pretrained(save_path)
+        tokenizer.save_pretrained(save_path)
+        print(f"Unified model saved to {save_path}")
+
         return model, tokenizer
+
+
+
 
 class DataHandler:
     """データの読み込みと書き込みを担当するクラス"""
@@ -95,7 +144,11 @@ def generate_responses(config_file: str):
 
         # プロンプト作成
         prompt = f"""### 指示\n{input_text}\n### 回答\n"""
-        inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
+        inputs = tokenizer([prompt], return_tensors="pt")
+        
+        # 入力テンソルをデバイスに転送し、型を修正
+        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+        inputs["input_ids"] = inputs["input_ids"].long()  # input_idsを明示的にlong型に変換
 
         # 推論処理
         generation_args = {
@@ -109,6 +162,7 @@ def generate_responses(config_file: str):
         # 出力処理
         prediction = tokenizer.decode(outputs[0], skip_special_tokens=True).split('\n### 回答')[-1]
         results.append({"task_id": task_id, "input": input_text, "output": prediction})
+
 
     # 結果を保存
     adapter_id = re.sub(".*/", "", config.get("model.adapter_id", "default"))
