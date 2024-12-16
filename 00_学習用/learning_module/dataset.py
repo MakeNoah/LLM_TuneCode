@@ -10,13 +10,6 @@ def prepare_dataset(config):
     Returns:
         dict: トレーニングと評価データセットを含む辞書。
     """
-    # トレーニングデータセットのロード
-    dataset = load_dataset("json", data_files=config["dataset"]["train_file"])
-
-    # プロンプトフォーマットの定義
-    prompt_format = config["dataset"]["prompt_format"]
-    eos_token = config.get("eos_token", "</s>")  # デフォルトでEOSトークンを設定
-
     def formatting_prompts_func(examples):
         """
         データセットの各サンプルをプロンプト形式に整形する。
@@ -25,6 +18,13 @@ def prepare_dataset(config):
         output_text = examples["output"]
         formatted_text = prompt_format.format(input_text, output_text) + eos_token
         return {"formatted_text": formatted_text}
+    
+    # トレーニングデータセットのロード
+    dataset = load_dataset("json", data_files=config["dataset"]["train_file"])
+
+    # プロンプトフォーマットの定義
+    prompt_format = config["dataset"]["prompt_format"]
+    eos_token = config.get("eos_token", "</s>")  # デフォルトでEOSトークンを設定
 
     # トレーニングデータセットの整形
     dataset = dataset.map(

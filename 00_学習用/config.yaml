@@ -1,14 +1,22 @@
+# 三行目はコミットしないこと
+huggingface:
+  hf_token: "dummy"
+  private: false
+
 model:
   base_model_id: "llm-jp/llm-jp-3-13b"
   #base_model_id:  "google/gemma-2-9b"
   new_model_path: "./results"
-  new_model_id: "llm-jp-3-13b-finetune"
+  new_model_id: "llm-jp-3-13b-magpie"
   max_seq_length: 512
   lora:
-    r: 16
-    alpha: 32
-    dropout: 0.05
+    r: 36
+    alpha: 16
+    dropout: 0.1
     bias: "none"
+
+use_checkpoint: false
+checkpoint: "results/outputs/checkpoint-1200"
 
 quantization:
   load_in_4bit: true
@@ -19,7 +27,7 @@ training:
   output_dir: "./results/outputs"
   batch_size: 1
   gradient_accumulation: 4
-  learning_rate: 5.0e-5
+  learning_rate: 1.0e-4
   num_epochs: 1
   warmup_steps: 10
   save_steps: 100
@@ -29,24 +37,22 @@ training:
 dataset:
   #train_file: "./dataset/ichikara-instruction-003-001-1.json"
   #train_file: "./dataset/addThink_ichikara-instruction-003-001-1.json"
-  train_file: "./dataset/merged_dataset.json"
+  train_file: "./dataset/merged_dataset_with_magpie.json"
   eval_file: "./dataset/elyza-tasks-100-TV_0.jsonl"
   prompt_format: "### 指示\n{}\n### 回答\n{}"
-
-huggingface:
-  hf_token: "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"
-  private: false
 
 process_config:
   input_filepaths:
   - "./dataset/ichikara-instruction-003-001-1.json"
-  - "./dataset/ichikara-instruction-003-001-2.1.json"
-  - "./dataset/ichikara-instruction-003-001-2.2.json"
-  - "./dataset/ichikara-instruction-003-001-5.1.json"
-  - "./dataset/ichikara-instruction-003-001-5.2.json"
+  #- "./dataset/ichikara-instruction-003-001-2.1.json"
+  #- "./dataset/ichikara-instruction-003-001-2.2.json"
+  #- "./dataset/ichikara-instruction-003-001-5.1.json"
+  #- "./dataset/ichikara-instruction-003-001-5.2.json"
   - "./dataset/ichikara-instruction-003-002-1.json"
   # - "./dataset/ichikara-instruction-003-003-1.json" #重複データなのでオミット
-  merged_filepath: dataset/merged_dataset.json
+  - "./dataset/output_chunk_1.json" # magpieのデータを追加
+  - "./dataset/output_chunk_2.json" # magpieのデータを追加
+  merged_filepath: dataset/merged_dataset_with_magpie.json
   prefixed_filepath: dataset/prefixed_dataset.json
   split_processed_filepath: dataset/split_processed_dataset.json
   prepend_text: "う〜んなるほど…よく考えさせてください。\n"

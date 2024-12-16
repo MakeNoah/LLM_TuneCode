@@ -1,3 +1,4 @@
+# python Processer_main.py
 import yaml
 from preprocess_module.merge_datasets import merge_datasets
 from preprocess_module.add_prefix import prepend_to_outputs
@@ -74,6 +75,8 @@ processor.merge()
 #processor.add_prefix()
 # 出力を分割して右側のみを残す
 #processor.split_output()
+# magpieのデータとマージする
+
 
 if __name__ == "__main__":
     main()
