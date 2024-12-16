@@ -12,6 +12,7 @@ import bitsandbytes as bnb
 import os
 from pathlib import Path
 from pprint import pprint
+from duckduckgo_search import DDGS
 
 class Config:
     """設定情報を読み込むクラス"""
@@ -103,6 +104,41 @@ class DataHandler:
                 json.dump(result, f, ensure_ascii=False)
                 f.write('\n')
 
+
+
+class RAG:
+    """
+    Retrieval-Augmented Generation (RAG) クラス
+    DuckDuckGo での検索機能を簡潔に実装。
+    """
+    def __init__(self):
+        pass
+
+    def duckduckgo_search(self, query, num_results=2):
+        """
+        DuckDuckGo を使用して検索を実行するメソッド。
+
+        Parameters:
+        - query (str): 検索クエリ
+        - num_results (int): 取得する最大検索結果数
+
+        Returns:
+        - list: 検索結果（タイトルと記事内容 のリスト）
+        """
+        query = query[:30] # 長すぎるとエラー吐くので適度にカット
+        results = DDGS().text(query, max_results=num_results)  # 検索結果を取得
+        
+        # 結果が取得できなかった場合の処理
+        if not results:
+            return []
+        
+        # 検索結果をフォーマット
+        formatted_results = [
+            {"title": result["title"], "body": result["body"]} for result in results
+        ]
+        return formatted_results
+
+
 def generate_responses(config_file: str):
     """
     推論処理のエントリーポイント
@@ -124,12 +160,19 @@ def generate_responses(config_file: str):
     FastLanguageModel.for_inference(model)
 
     results = []
+
+    #RAGの設定
+    RAG_Instance = RAG()
     for dt in tqdm(datasets):
         input_text = dt["input"]
         task_id = dt["task_id"]
 
         # プロンプト作成
-        prompt = f"""以下の指示に対してステップバイステップで考え、回答を生成しましょう。### 指示\n{input_text}\n### 回答\n"""
+        if use_rag:
+            doc = RAG_Instance.duckduckgo_search(input_text)
+            prompt = f"""以下の指示に対してステップバイステップで考え、回答を生成しましょう。### 指示\n{input_text}\n### 関連文書\n{doc}\n### 回答\n"""
+        else:
+            prompt = f"""以下の指示に対してステップバイステップで考え、回答を生成しましょう。### 指示\n{input_text}\n### 回答\n"""
         inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
 
         # 推論処理
@@ -162,6 +205,7 @@ def generate_responses(config_file: str):
     print(f"Results saved to {output_file}")
 
 if __name__ == "__main__":
+    use_rag = False
     # `config.yaml` を指定して推論を実行
     CONFIG_FILE = "config.yaml"
     generate_responses(CONFIG_FILE)
