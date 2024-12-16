@@ -6,6 +6,12 @@ from tqdm import tqdm
 from unsloth import FastLanguageModel
 from peft import PeftModel
 import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
+import bitsandbytes as bnb
+import os
+from pathlib import Path
+from pprint import pprint
 
 class Config:
     """設定情報を読み込むクラス"""
@@ -28,21 +34,40 @@ class ModelFactory:
         """設定に基づいてモデルを作成する"""
         model_id = config.get("model.model_id")
         adapter_id = config.get("model.adapter_id")
-        dtype = config.get("model.dtype")
-        load_in_4bit = config.get("model.load_in_4bit")
+        load_in_4bit = config.get("model.load_in_4bit", False)  # 量子化の設定
         hf_token = config.get("hf_token")
 
-        # モデルのロード
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=model_id,
-            dtype=dtype,
-            load_in_4bit=load_in_4bit,
-            trust_remote_code=True,
-        )
+        print(f"Model ID: {model_id}, Adapter ID: {adapter_id}, Load in 4bit: {load_in_4bit}")
+
+        # モデルのロード時に直接量子化を適用
+
+
+        if load_in_4bit:
+            # 4bit量子化用の設定をbitsandbytesで適用
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                device_map="auto",
+                quantization_config=bnb.BitsAndBytesConfig(load_in_4bit=True),
+                trust_remote_code=True,
+                use_auth_token=hf_token,
+            )
+        else:
+            # 通常の8bit量子化（またはフル精度）
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                device_map="auto",
+                trust_remote_code=True,
+                use_auth_token=hf_token,
+                load_in_8bit=True,  # bitsandbytesによる8bit量子化
+            )
+
+        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True, use_auth_token=hf_token)
 
         # LoRAアダプタの統合
         model = PeftModel.from_pretrained(model, adapter_id, token=hf_token)
+
         return model, tokenizer
+
 
 class DataHandler:
     """データの読み込みと書き込みを担当するクラス"""
@@ -63,6 +88,16 @@ class DataHandler:
     @staticmethod
     def save_results(results, output_file):
         """推論結果をJSONL形式で保存する"""
+        # ファイルの親ディレクトリを取得
+        parent_directory = os.path.dirname(output_file)
+        
+        # 親ディレクトリが存在しない場合、作成する
+        if not os.path.exists(parent_directory):
+            os.makedirs(parent_directory)
+            print(f"親ディレクトリを作成しました: {parent_directory}")
+        else:
+            pass
+            # print(f"親ディレクトリは既に存在しています: {parent_directory}")
         with open(output_file, 'w', encoding='utf-8') as f:
             for result in results:
                 json.dump(result, f, ensure_ascii=False)
@@ -94,7 +129,7 @@ def generate_responses(config_file: str):
         task_id = dt["task_id"]
 
         # プロンプト作成
-        prompt = f"""### 指示\n{input_text}\n### 回答\n"""
+        prompt = f"""以下の指示に対してステップバイステップで考え、回答を生成しましょう。### 指示\n{input_text}\n### 回答\n"""
         inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
 
         # 推論処理
@@ -105,10 +140,20 @@ def generate_responses(config_file: str):
             "repetition_penalty": config.get("generation.repetition_penalty"),
         }
         outputs = model.generate(**inputs, **generation_args)
+        
+
+
 
         # 出力処理
-        prediction = tokenizer.decode(outputs[0], skip_special_tokens=True).split('\n### 回答')[-1]
+        output_decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        prediction = output_decoded.split('### 回答\n')[1]
         results.append({"task_id": task_id, "input": input_text, "output": prediction})
+        # debug用出力
+        print("prompt\n")
+        pprint(prompt)
+        print("output\n")
+        pprint(output_decoded)
+        #pprint(prediction)
 
     # 結果を保存
     adapter_id = re.sub(".*/", "", config.get("model.adapter_id", "default"))
