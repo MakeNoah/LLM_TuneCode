@@ -3,7 +3,7 @@ from learning_module.dataset import prepare_dataset
 from learning_module.model_setup import initialize_model
 from learning_module.trainer import initialize_trainer
 from learning_module.inference import infer_and_save
-from learning_module.save_and_upload import save_and_upload
+from learning_module.save_and_upload import save_and_upload,push_from_save
 import os
 
 # GPUメモリ設定
@@ -39,7 +39,10 @@ def main():
 
     print("Step 2: トレーニングの開始...")
     trainer = initialize_trainer(config, model, tokenizer, dataset)
-    trainer.train()
+    if config["use_checkpoint"]:
+        trainer.train(resume_from_checkpoint=config["checkpoint"])
+    else:
+        trainer.train()
 
     print("Step 3: 推論と結果保存...")
     infer_and_save(model, tokenizer, dataset["eval"], "evaluation_results.jsonl")
@@ -49,5 +52,11 @@ def main():
 
     print("すべての処理が完了しました。")
 
+# tokenミスったとき
+def _savePush():
+    config = load_config()
+    push_from_save(config)
+
 if __name__ == "__main__":
     main()
+    #_savePush()
